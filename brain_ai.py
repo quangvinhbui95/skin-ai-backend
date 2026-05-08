@@ -3,10 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
 import random
+import io
 
 app = FastAPI()
 
-# 1. Cấu hình CORS - Rất quan trọng để gọi trực tiếp từ trình duyệt
+# Cấu hình CORS để web shopbang.quangvinh.website truy cập được
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -22,42 +23,41 @@ async def analyze_skin(file: UploadFile = File(...)):
     img_array = np.frombuffer(request_object_content, np.uint8)
     img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-    # Lấy kích thước ảnh để tạo tọa độ markers chính xác
+    # Lấy kích thước ảnh để tạo tọa độ markers giả lập
     height, width, _ = img.shape
 
-    # 2. MÔ PHỎNG LOGIC PHÂN TÍCH (Vinh sẽ thay bằng Model AI thật sau này)
-    # Ở đây mình giả lập các chỉ số điểm số từ 0-10
+    # --- LOGIC MÔ PHỎNG CHẨN ĐOÁN KHẮT KHE (Để BOT không hoàn hảo) ---
+    # Điểm càng thấp = Tình trạng da càng tệ (Cần được cải thiện)
+    # Ta ưu tiên các khoảng điểm từ 3 đến 6 để luôn có khuyết điểm
+
+    # 1. Giả lập điểm số các vấn đề da (0-10)
     scores = {
-        "acne": random.randint(6, 9),      # Mụn viêm
-        "non_acne": random.randint(3, 5),  # Mụn không viêm
-        "sebum": random.randint(7, 9),     # Sợi bã nhờn
-        "scar": random.randint(1, 4),      # Sẹo
-        "pigment": random.randint(2, 5),   # Sắc tố
-        "pore": random.randint(6, 8)       # Lỗ chân lông
+        "acne": random.randint(2, 6),      # Mụn viêm đỏ (Tệ -> Trung bình)
+        "non_acne": random.randint(4, 7),  # Mụn không viêm
+        "sebum": random.randint(2, 5),     # Sợi bã nhờn (Tệ)
+        "scar": random.randint(3, 8),      # Sẹo
+        "pigment": random.randint(1, 5),   # Sắc tố da (Rất tệ -> Tệ)
+        "pore": random.randint(2, 6)       # Lỗ chân lông (Tệ)
     }
 
-    # Giả lập tọa độ các đốm mụn/vấn đề da để vẽ vòng tròn trên giao diện
+    # 2. Giả lập tọa độ các vấn đề da (Vẽ markers tím)
     # Tọa độ x, y tính theo pixel thực tế của ảnh
     markers = [
         {"x": random.randint(100, width-100), "y": random.randint(100, height-100)} 
-        for _ in range(5)
+        for _ in range(5) # Luôn tạo 5 điểm nhận diện khuyết điểm
     ]
 
-    # 3. KẾT QUẢ TRẢ VỀ KHỚP VỚI SCRIPT.JS
+    # 3. KẾT QUẢ TRẢ VỀ KHỚP VỚI SCRIPT.JS (Bao gồm điểm số và Markers)
     result = {
-        "label": "Tăng tiết bã nhờn & Mụn viêm",
-        "advice": "AI phát hiện da bạn đang đổ dầu nhiều và có nốt viêm. Hãy sử dụng Giấm lựu Daesang để cân bằng độ pH và hỗ trợ giảm viêm từ bên trong.",
+        "label": "Tăng tiết bã nhờn & Sắc tố",
+        "advice": "AI phát hiện da bạn đang có vấn đề nghiêm trọng về sắc tố và đổ dầu. Hãy sử dụng Niacinamide hoặc Serum Giấm lựu để kiểm soát dầu và làm sáng da.",
         "cashback": "15.000đ",
         "shopee_link": "https://fashion.quangvinh.website",
-        "scores": scores,
-        "markers": markers
+        "scores": scores, # Object chứa các con số điểm đã random khắt khe
+        "markers": markers # Object chứa tọa độ vẽ markers
     }
     
     return result
-
-@app.get("/")
-async def root():
-    return {"status": "AI Server is running"}
 
 if __name__ == "__main__":
     import uvicorn
